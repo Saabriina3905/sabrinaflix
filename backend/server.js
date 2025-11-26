@@ -15,9 +15,6 @@ const PORT = process.env.PORT || 5000;
 
 // Middlewares
 
-app.use(express.json());
-app.use(cookieParser());
-
 // CORS configuration - allow multiple origins
 const allowedOrigins = [
   process.env.CLIENT_URL,
@@ -26,6 +23,7 @@ const allowedOrigins = [
   "http://127.0.0.1:5173"
 ];
 
+// CORS middleware - must be before other middleware
 app.use(
   cors({
     origin: function (origin, callback) {
@@ -58,13 +56,49 @@ app.use(
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar'],
+    preflightContinue: false,
+    optionsSuccessStatus: 200
   })
 );
 
+// Handle preflight requests explicitly
+app.options('*', (req, res) => {
+  const origin = req.headers.origin;
+  
+  // Check if origin should be allowed (same logic as CORS middleware)
+  if (!origin || 
+      origin.includes('vercel.app') || 
+      origin.includes('sabrinaflix') ||
+      allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Max-Age', '86400'); // 24 hours
+    return res.sendStatus(200);
+  }
+  
+  res.sendStatus(403);
+});
+
+// Other middlewares
+app.use(express.json());
+app.use(cookieParser());
+
 app.get("/", (req, res) => {
   res.send("This Is Sabrinaflix");
+});
+
+// Test endpoint to verify CORS
+app.get("/api/test-cors", (req, res) => {
+  res.json({ 
+    message: "CORS is working!",
+    origin: req.headers.origin,
+    timestamp: new Date().toISOString()
+  });
 });
 
 app.post("/api/signup", async (req, res) => {
