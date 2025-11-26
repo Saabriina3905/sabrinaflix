@@ -32,14 +32,21 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
+    // Always allow Vercel deployment
+    if (origin.includes('vercel.app') || origin.includes('sabrinaflix')) {
+      return callback(null, true);
+    }
+    
     // In development, allow all origins (including network IPs)
     if (process.env.NODE_ENV !== 'production') {
       callback(null, true);
     } else {
-      // In production, only allow specified origins
+      // In production, allow specified origins
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
+        // Log for debugging
+        console.log('CORS blocked origin:', origin);
         callback(new Error('Not allowed by CORS'));
       }
     }

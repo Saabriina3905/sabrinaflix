@@ -7,7 +7,7 @@ axios.defaults.withCredentials = true;
 const getApiUrl = () => {
   // In production, use the production API URL
   if (import.meta.env.PROD) {
-    return "https://aiflix-ab8d.onrender.com/api";
+    return "https://aiflix-1.onrender.com/api";
   }
   
   // In development, use the current hostname with port 5000

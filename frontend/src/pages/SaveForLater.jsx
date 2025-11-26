@@ -10,7 +10,7 @@ axios.defaults.withCredentials = true;
 // Dynamic API URL
 const getApiUrl = () => {
   if (import.meta.env.PROD) {
-    return "https://aiflix-ab8d.onrender.com/api";
+    return "https://aiflix-1.onrender.com/api";
   }
   const hostname = window.location.hostname;
   const protocol = window.location.protocol;
