@@ -29,17 +29,37 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (mobile apps, Postman)
-      if (!origin) return callback(null, true);
+      // Allow requests with no origin (mobile apps, Postman, server-to-server)
+      if (!origin) {
+        console.log("✅ Allowing request with no origin");
+        return callback(null, true);
+      }
 
+      // Always allow Vercel deployments (any vercel.app subdomain)
+      if (origin.includes('vercel.app') || origin.includes('sabrinaflix')) {
+        console.log("✅ Allowing Vercel origin:", origin);
+        return callback(null, true);
+      }
+
+      // Check exact matches
       if (allowedOrigins.includes(origin)) {
+        console.log("✅ Allowing origin:", origin);
+        return callback(null, true);
+      }
+
+      // In development, allow all localhost origins
+      if (process.env.NODE_ENV !== 'production' && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+        console.log("✅ Allowing development origin:", origin);
         return callback(null, true);
       }
 
       console.log("❌ Blocked by CORS:", origin);
+      console.log("Allowed origins:", allowedOrigins);
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 
