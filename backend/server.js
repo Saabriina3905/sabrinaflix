@@ -21,38 +21,27 @@ app.use(cookieParser());
 // CORS configuration - allow multiple origins
 const allowedOrigins = [
   process.env.CLIENT_URL,
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  "http://172.28.156.89:5173",
-  "https://sabrinaflix-uwfo.vercel.app"
+  "https://sabrinaflix-uwfo.vercel.app",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173"
 ];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    // Always allow Vercel deployment
-    if (origin.includes('vercel.app') || origin.includes('sabrinaflix')) {
-      return callback(null, true);
-    }
-    
-    // In development, allow all origins (including network IPs)
-    if (process.env.NODE_ENV !== 'production') {
-      callback(null, true);
-    } else {
-      // In production, allow specified origins
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (mobile apps, Postman)
+      if (!origin) return callback(null, true);
+
       if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        // Log for debugging
-        console.log('CORS blocked origin:', origin);
-        callback(new Error('Not allowed by CORS'));
+        return callback(null, true);
       }
-    }
-  },
-  credentials: true
-}))
+
+      console.log("❌ Blocked by CORS:", origin);
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
 
 app.get("/", (req, res) => {
   res.send("Subscribe To My Channel!");
