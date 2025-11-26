@@ -1,21 +1,7 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import API from "../api/axios";
 import { useAuthStore } from "../store/authStore";
 import toast from "react-hot-toast";
-
-axios.defaults.withCredentials = true;
-
-// Dynamic API URL
-const getApiUrl = () => {
-  if (import.meta.env.PROD) {
-    return "https://aiflix-1.onrender.com/api";
-  }
-  const hostname = window.location.hostname;
-  const protocol = window.location.protocol;
-  return `${protocol}//${hostname}:5000/api`;
-};
-
-const API_URL = getApiUrl();
 
 export const useSaveForLater = (contentId, contentType) => {
   const { user } = useAuthStore();
@@ -30,8 +16,8 @@ export const useSaveForLater = (contentId, contentType) => {
 
   const checkIfSaved = async () => {
     try {
-      const response = await axios.get(
-        `${API_URL}/save-for-later/check/${contentId}/${contentType}`
+      const response = await API.get(
+        `/save-for-later/check/${contentId}/${contentType}`
       );
       setIsSaved(response.data.isSaved);
     } catch (error) {
@@ -47,7 +33,7 @@ export const useSaveForLater = (contentId, contentType) => {
 
     setLoading(true);
     try {
-      await axios.post(`${API_URL}/save-for-later`, {
+      await API.post("/save-for-later", {
         contentId,
         contentType,
         title,
@@ -72,7 +58,7 @@ export const useSaveForLater = (contentId, contentType) => {
 
     setLoading(true);
     try {
-      await axios.delete(`${API_URL}/save-for-later/${contentId}/${contentType}`);
+      await API.delete(`/save-for-later/${contentId}/${contentType}`);
       setIsSaved(false);
       toast.success("Removed from your list");
     } catch (error) {

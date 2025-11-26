@@ -1,23 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { Bookmark, BookmarkCheck, Trash2 } from "lucide-react";
-import axios from "axios";
+import API from "../api/axios";
 import { useAuthStore } from "../store/authStore";
 import toast from "react-hot-toast";
-
-axios.defaults.withCredentials = true;
-
-// Dynamic API URL
-const getApiUrl = () => {
-  if (import.meta.env.PROD) {
-    return "https://aiflix-1.onrender.com/api";
-  }
-  const hostname = window.location.hostname;
-  const protocol = window.location.protocol;
-  return `${protocol}//${hostname}:5000/api`;
-};
-
-const API_URL = getApiUrl();
 
 const SaveForLater = () => {
   const { user } = useAuthStore();
@@ -32,7 +18,7 @@ const SaveForLater = () => {
 
   const fetchSavedItems = async () => {
     try {
-      const response = await axios.get(`${API_URL}/save-for-later`);
+      const response = await API.get("/save-for-later");
       setSavedItems(response.data.savedItems || []);
     } catch (error) {
       console.error("Error fetching saved items:", error);
@@ -44,7 +30,7 @@ const SaveForLater = () => {
 
   const handleRemove = async (contentId, contentType) => {
     try {
-      await axios.delete(`${API_URL}/save-for-later/${contentId}/${contentType}`);
+      await API.delete(`/save-for-later/${contentId}/${contentType}`);
       setSavedItems(savedItems.filter(
         item => !(item.contentId === contentId && item.contentType === contentType)
       ));

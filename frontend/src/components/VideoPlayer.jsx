@@ -1,22 +1,7 @@
 import React, { useState, useEffect } from "react";
-import ReactPlayer from "react-player";
 import { X, Star } from "lucide-react";
-import axios from "axios";
+import API from "../api/axios";
 import toast from "react-hot-toast";
-
-axios.defaults.withCredentials = true;
-
-// Dynamic API URL - works for both localhost and network IPs
-const getApiUrl = () => {
-  if (import.meta.env.PROD) {
-    return "https://aiflix-1.onrender.com/api";
-  }
-  const hostname = window.location.hostname;
-  const protocol = window.location.protocol;
-  return `${protocol}//${hostname}:5000/api`;
-};
-
-const API_URL = getApiUrl();
 
 // Extract YouTube video ID from URL and convert to embed URL
 const getYouTubeEmbedUrl = (url) => {
@@ -71,8 +56,8 @@ const VideoPlayer = ({ videoUrl, contentId, contentType, onClose, title }) => {
     // Fetch user's existing rating
     const fetchRating = async () => {
       try {
-        const response = await axios.get(
-          `${API_URL}/ratings/${contentId}/${contentType}`
+        const response = await API.get(
+          `/ratings/${contentId}/${contentType}`
         );
         if (response.data.rating) {
           console.log(
@@ -107,7 +92,7 @@ const VideoPlayer = ({ videoUrl, contentId, contentType, onClose, title }) => {
 
     setIsSubmittingRating(true);
     try {
-      await axios.post(`${API_URL}/ratings`, {
+      await API.post("/ratings", {
         contentId,
         contentType,
         rating,

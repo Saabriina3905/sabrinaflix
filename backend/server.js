@@ -15,74 +15,43 @@ const PORT = process.env.PORT || 5000;
 
 // Middlewares
 
-// CORS configuration - allow multiple origins
 const allowedOrigins = [
-  process.env.CLIENT_URL,
   "https://sabrinaflix-uwfo.vercel.app",
   "http://localhost:5173",
   "http://127.0.0.1:5173"
 ];
 
-// CORS middleware - must be before other middleware
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (mobile apps, Postman, server-to-server)
-      if (!origin) {
-        console.log("✅ Allowing request with no origin");
-        return callback(null, true);
-      }
+      if (!origin) return callback(null, true); // allow mobile, server-to-server
 
-      // Always allow Vercel deployments (any vercel.app subdomain)
-      if (origin.includes('vercel.app') || origin.includes('sabrinaflix')) {
-        console.log("✅ Allowing Vercel origin:", origin);
-        return callback(null, true);
-      }
-
-      // Check exact matches
       if (allowedOrigins.includes(origin)) {
-        console.log("✅ Allowing origin:", origin);
-        return callback(null, true);
-      }
-
-      // In development, allow all localhost origins
-      if (process.env.NODE_ENV !== 'production' && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
-        console.log("✅ Allowing development origin:", origin);
         return callback(null, true);
       }
 
       console.log("❌ Blocked by CORS:", origin);
-      console.log("Allowed origins:", allowedOrigins);
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-    exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar'],
-    preflightContinue: false,
-    optionsSuccessStatus: 200
   })
 );
 
-// Handle preflight requests explicitly
-app.options('*', (req, res) => {
+// Fix for preflight (OPTIONS) requests
+app.options("*", (req, res) => {
   const origin = req.headers.origin;
-  
-  // Check if origin should be allowed (same logic as CORS middleware)
-  if (!origin || 
-      origin.includes('vercel.app') || 
-      origin.includes('sabrinaflix') ||
-      allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Max-Age', '86400'); // 24 hours
+
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
     return res.sendStatus(200);
   }
-  
-  res.sendStatus(403);
+
+  return res.sendStatus(403);
 });
+
 
 // Other middlewares
 app.use(express.json());

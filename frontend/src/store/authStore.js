@@ -1,23 +1,5 @@
 import { create } from "zustand";
-import axios from "axios";
-
-axios.defaults.withCredentials = true;
-
-// Dynamic API URL - works for both localhost and network IPs
-const getApiUrl = () => {
-  // In production, use the production API URL
-  if (import.meta.env.PROD) {
-    return "https://aiflix-1.onrender.com/api";
-  }
-  
-  // In development, use the current hostname with port 5000
-  const hostname = window.location.hostname;
-  const protocol = window.location.protocol;
-  // Replace the frontend port (5173) with backend port (5000)
-  return `${protocol}//${hostname}:5000/api`;
-};
-
-const API_URL = getApiUrl();
+import API from "../api/axios";
 
 export const useAuthStore = create((set) => ({
   // initial states
@@ -33,7 +15,7 @@ export const useAuthStore = create((set) => ({
     set({ isLoading: true, message: null });
 
     try {
-      const response = await axios.post(`${API_URL}/signup`, {
+      const response = await API.post("/signup", {
         username,
         email,
         password,
@@ -57,7 +39,7 @@ export const useAuthStore = create((set) => ({
     set({ isLoading: true, message: null, error: null });
 
     try {
-      const response = await axios.post(`${API_URL}/login`, {
+      const response = await API.post("/login", {
         username,
         password,
       });
@@ -88,7 +70,7 @@ export const useAuthStore = create((set) => ({
     set({ fetchingUser: true, error: null });
 
     try {
-      const response = await axios.get(`${API_URL}/fetch-user`);
+      const response = await API.get("/fetch-user");
       set({ user: response.data.user, fetchingUser: false });
     } catch (error) {
       set({
@@ -105,7 +87,7 @@ export const useAuthStore = create((set) => ({
     set({ isLoading: true, error: null, message: null });
 
     try {
-      const response = await axios.post(`${API_URL}/logout`);
+      const response = await API.post("/logout");
       const { message } = response.data;
       set({
         message,
