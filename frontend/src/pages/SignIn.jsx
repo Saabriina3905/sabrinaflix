@@ -23,8 +23,10 @@ const SignIn = () => {
       toast.success(message);
       navigate("/");
     } catch (error) {
-      // Error is already set in the store and will be displayed
-      const errorMessage = error.response?.data?.message || error.message || "Login failed. Please try again.";
+      // Error is already set in the store - use userMessage from interceptor or fallback
+      const errorMessage = error.userMessage || 
+                          error.response?.data?.message || 
+                          "Unable to connect to the server. Please check if the backend server is running.";
       toast.error(errorMessage);
       console.error("Login error:", error);
     }

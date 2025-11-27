@@ -37,19 +37,22 @@ app.use(
   })
 );
 
-// Fix for preflight (OPTIONS) requests
-app.options("*", (req, res) => {
-  const origin = req.headers.origin;
+// Fix for preflight (OPTIONS) requests - handle before other routes
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    const origin = req.headers.origin;
 
-  if (allowedOrigins.includes(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
-    res.header("Access-Control-Allow-Credentials", "true");
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    return res.sendStatus(200);
+    if (allowedOrigins.includes(origin)) {
+      res.header("Access-Control-Allow-Origin", origin);
+      res.header("Access-Control-Allow-Credentials", "true");
+      res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+      res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+      return res.sendStatus(200);
+    }
+
+    return res.sendStatus(403);
   }
-
-  return res.sendStatus(403);
+  next();
 });
 
 

@@ -23,14 +23,30 @@ export const useAuthStore = create((set) => ({
 
       set({ user: response.data.user, isLoading: false });
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 
-                          error.message || 
-                          "Error Signing up. Please check your connection.";
+      let errorMessage;
+      
+      // Check if it's a network error (no response from server)
+      if (!error.response) {
+        if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || error.message.includes('Network')) {
+          errorMessage = "Unable to connect to the server. Please check if the backend server is running.";
+        } else if (error.code === 'ECONNREFUSED') {
+          errorMessage = "Connection refused. Please ensure the backend server is running on port 5000.";
+        } else {
+          errorMessage = "Network error. Please check your connection and try again.";
+        }
+      } else {
+        // Server responded with an error
+        errorMessage = error.response?.data?.message || 
+                      "Error signing up. Please try again.";
+      }
+      
       set({
         isLoading: false,
         error: errorMessage,
       });
 
+      // Attach user-friendly message to error object for use in catch blocks
+      error.userMessage = errorMessage;
       throw error;
     }
   },
@@ -54,14 +70,33 @@ export const useAuthStore = create((set) => ({
 
       return { user, message };
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 
-                          error.message || 
-                          "Error logging in. Please check your connection.";
+      let errorMessage;
+      
+      // Use user-friendly message from interceptor if available
+      if (error.userMessage) {
+        errorMessage = error.userMessage;
+      } else if (!error.response) {
+        // Network error (no response from server)
+        if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || error.message.includes('Network')) {
+          errorMessage = "Unable to connect to the server. Please check if the backend server is running.";
+        } else if (error.code === 'ECONNREFUSED') {
+          errorMessage = "Connection refused. Please ensure the backend server is running on port 5000.";
+        } else {
+          errorMessage = "Network error. Please check your connection and try again.";
+        }
+      } else {
+        // Server responded with an error
+        errorMessage = error.response?.data?.message || 
+                      "Error logging in. Please check your credentials.";
+      }
+      
       set({
         isLoading: false,
         error: errorMessage,
       });
 
+      // Attach user-friendly message to error object for use in catch blocks
+      error.userMessage = errorMessage;
       throw error;
     }
   },

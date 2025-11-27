@@ -20,7 +20,40 @@ const API = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000, // 10 second timeout
 });
+
+// Request interceptor
+API.interceptors.request.use(
+  (config) => {
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for better error handling
+API.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    // Enhance network error messages
+    if (!error.response) {
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        error.userMessage = "Unable to connect to the server. Please check if the backend server is running on port 5000.";
+      } else if (error.code === 'ECONNREFUSED') {
+        error.userMessage = "Connection refused. Please ensure the backend server is running.";
+      } else if (error.code === 'ETIMEDOUT' || error.message.includes('timeout')) {
+        error.userMessage = "Request timed out. Please check your connection and try again.";
+      } else {
+        error.userMessage = "Network error. Please check your connection and try again.";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default API;
 
