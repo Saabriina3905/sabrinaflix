@@ -21,25 +21,48 @@ const allowedOrigins = [
   "http://127.0.0.1:5173"
 ];
 
-// CORS configuration
+// CORS configuration - comprehensive setup
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps, Postman, etc.)
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
+      // Allow requests with no origin (mobile apps, Postman, server-to-server)
+      if (!origin) {
         return callback(null, true);
       }
-
-      console.log("❌ Blocked by CORS:", origin);
-      return callback(new Error("Not allowed by CORS"));
+      
+      // Check if origin is in allowed list
+      if (allowedOrigins.includes(origin)) {
+        console.log("✅ CORS allowed origin:", origin);
+        return callback(null, true);
+      }
+      
+      // Allow Vercel preview deployments (pattern: *.vercel.app)
+      if (origin.includes('.vercel.app')) {
+        console.log("✅ CORS allowed Vercel preview:", origin);
+        return callback(null, true);
+      }
+      
+      // Log for debugging
+      console.log("❌ CORS blocked origin:", origin);
+      console.log("✅ Allowed origins:", allowedOrigins);
+      
+      // Return error to block the request
+      return callback(new Error(`CORS: Origin ${origin} is not allowed`));
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+      'Origin',
+      'Access-Control-Request-Method',
+      'Access-Control-Request-Headers'
+    ],
     exposedHeaders: ['Content-Type'],
-    optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
+    preflightContinue: false,
+    optionsSuccessStatus: 200
   })
 );
 
