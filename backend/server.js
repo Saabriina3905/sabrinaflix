@@ -18,10 +18,9 @@ const PORT = process.env.PORT || 5000;
 const allowedOrigins = [
   "https://sabrinaflix-uwfo.vercel.app",
   "http://localhost:5173",
-  "http://127.0.0.1:5173"
+  "http://172.20.10.5:5173",
 ];
 
-// CORS configuration - comprehensive setup
 app.use(
   cors({
     origin: function (origin, callback) {
@@ -29,43 +28,42 @@ app.use(
       if (!origin) {
         return callback(null, true);
       }
-      
+
       // Check if origin is in allowed list
       if (allowedOrigins.includes(origin)) {
         console.log("✅ CORS allowed origin:", origin);
         return callback(null, true);
       }
-      
+
       // Allow Vercel preview deployments (pattern: *.vercel.app)
-      if (origin.includes('.vercel.app')) {
+      if (origin.includes(".vercel.app")) {
         console.log("✅ CORS allowed Vercel preview:", origin);
         return callback(null, true);
       }
-      
+
       // Log for debugging
       console.log("❌ CORS blocked origin:", origin);
       console.log("✅ Allowed origins:", allowedOrigins);
-      
+
       // Return error to block the request
       return callback(new Error(`CORS: Origin ${origin} is not allowed`));
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'X-Requested-With',
-      'Accept',
-      'Origin',
-      'Access-Control-Request-Method',
-      'Access-Control-Request-Headers'
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+      "Origin",
+      "Access-Control-Request-Method",
+      "Access-Control-Request-Headers",
     ],
-    exposedHeaders: ['Content-Type'],
+    exposedHeaders: ["Content-Type"],
     preflightContinue: false,
-    optionsSuccessStatus: 200
+    optionsSuccessStatus: 200,
   })
 );
-
 
 // Other middlewares
 app.use(express.json());
@@ -77,10 +75,10 @@ app.get("/", (req, res) => {
 
 // Test endpoint to verify CORS
 app.get("/api/test-cors", (req, res) => {
-  res.json({ 
+  res.json({
     message: "CORS is working!",
     origin: req.headers.origin,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -124,8 +122,9 @@ app.post("/api/signup", async (req, res) => {
 
       res.cookie("token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        secure: false,
+        sameSite: "lax",
+        path: "/",
       });
     }
 
@@ -143,7 +142,9 @@ app.post("/api/login", async (req, res) => {
   try {
     // Validate input
     if (!username || !password) {
-      return res.status(400).json({ message: "Username and password are required." });
+      return res
+        .status(400)
+        .json({ message: "Username and password are required." });
     }
 
     const userDoc = await User.findOne({ username });
@@ -168,8 +169,9 @@ app.post("/api/login", async (req, res) => {
 
       res.cookie("token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        secure: false,
+        sameSite: "lax",
+        path: "/",
       });
     }
 
@@ -241,12 +243,15 @@ app.post("/api/subscription/start-trial", verifyToken, async (req, res) => {
     }
 
     // Check if user already has an active subscription or trial
-    if (userDoc.subscriptionStatus === 'trial' || userDoc.subscriptionStatus === 'active') {
+    if (
+      userDoc.subscriptionStatus === "trial" ||
+      userDoc.subscriptionStatus === "active"
+    ) {
       const endDate = new Date(userDoc.subscriptionEndDate);
       if (endDate > new Date()) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "You already have an active subscription or trial.",
-          subscriptionEndDate: userDoc.subscriptionEndDate
+          subscriptionEndDate: userDoc.subscriptionEndDate,
         });
       }
     }
@@ -256,7 +261,7 @@ app.post("/api/subscription/start-trial", verifyToken, async (req, res) => {
     const subscriptionEndDate = new Date();
     subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
 
-    userDoc.subscriptionStatus = 'trial';
+    userDoc.subscriptionStatus = "trial";
     userDoc.trialStartDate = trialStartDate;
     userDoc.subscriptionEndDate = subscriptionEndDate;
 
@@ -265,7 +270,7 @@ app.post("/api/subscription/start-trial", verifyToken, async (req, res) => {
     res.status(200).json({
       message: "Free trial started successfully!",
       subscriptionStatus: userDoc.subscriptionStatus,
-      subscriptionEndDate: userDoc.subscriptionEndDate
+      subscriptionEndDate: userDoc.subscriptionEndDate,
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -282,20 +287,25 @@ app.get("/api/subscription/status", verifyToken, async (req, res) => {
     }
 
     // Check if subscription has expired
-    if (userDoc.subscriptionEndDate && new Date(userDoc.subscriptionEndDate) < new Date()) {
-      userDoc.subscriptionStatus = 'expired';
+    if (
+      userDoc.subscriptionEndDate &&
+      new Date(userDoc.subscriptionEndDate) < new Date()
+    ) {
+      userDoc.subscriptionStatus = "expired";
       await userDoc.save();
     }
 
-    const isActive = (userDoc.subscriptionStatus === 'trial' || userDoc.subscriptionStatus === 'active') &&
-                     userDoc.subscriptionEndDate &&
-                     new Date(userDoc.subscriptionEndDate) > new Date();
+    const isActive =
+      (userDoc.subscriptionStatus === "trial" ||
+        userDoc.subscriptionStatus === "active") &&
+      userDoc.subscriptionEndDate &&
+      new Date(userDoc.subscriptionEndDate) > new Date();
 
     res.status(200).json({
       subscriptionStatus: userDoc.subscriptionStatus,
       subscriptionEndDate: userDoc.subscriptionEndDate,
       trialStartDate: userDoc.trialStartDate,
-      isActive
+      isActive,
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -315,7 +325,7 @@ app.post("/api/subscription/upgrade", verifyToken, async (req, res) => {
     const subscriptionEndDate = new Date();
     subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
 
-    userDoc.subscriptionStatus = 'active';
+    userDoc.subscriptionStatus = "active";
     userDoc.subscriptionEndDate = subscriptionEndDate;
 
     await userDoc.save();
@@ -323,7 +333,7 @@ app.post("/api/subscription/upgrade", verifyToken, async (req, res) => {
     res.status(200).json({
       message: "Subscription upgraded successfully!",
       subscriptionStatus: userDoc.subscriptionStatus,
-      subscriptionEndDate: userDoc.subscriptionEndDate
+      subscriptionEndDate: userDoc.subscriptionEndDate,
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -340,7 +350,9 @@ app.post("/api/ratings", verifyToken, async (req, res) => {
     }
 
     if (rating < 1 || rating > 5) {
-      return res.status(400).json({ message: "Rating must be between 1 and 5." });
+      return res
+        .status(400)
+        .json({ message: "Rating must be between 1 and 5." });
     }
 
     const userDoc = await User.findById(req.userId);
@@ -351,7 +363,7 @@ app.post("/api/ratings", verifyToken, async (req, res) => {
 
     // Check if user already rated this content
     const existingRating = userDoc.ratings.find(
-      r => r.contentId === contentId && r.contentType === contentType
+      (r) => r.contentId === contentId && r.contentType === contentType
     );
 
     if (existingRating) {
@@ -364,7 +376,7 @@ app.post("/api/ratings", verifyToken, async (req, res) => {
         contentId,
         contentType,
         rating,
-        createdAt: new Date()
+        createdAt: new Date(),
       });
     }
 
@@ -372,7 +384,7 @@ app.post("/api/ratings", verifyToken, async (req, res) => {
 
     res.status(200).json({
       message: "Rating saved successfully!",
-      rating: existingRating || userDoc.ratings[userDoc.ratings.length - 1]
+      rating: existingRating || userDoc.ratings[userDoc.ratings.length - 1],
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -380,33 +392,46 @@ app.post("/api/ratings", verifyToken, async (req, res) => {
 });
 
 // Get user's rating for specific content
-app.get("/api/ratings/:contentId/:contentType", verifyToken, async (req, res) => {
-  try {
-    const { contentId, contentType } = req.params;
+app.get(
+  "/api/ratings/:contentId/:contentType",
+  verifyToken,
+  async (req, res) => {
+    try {
+      const { contentId, contentType } = req.params;
 
-    const userDoc = await User.findById(req.userId);
+      const userDoc = await User.findById(req.userId);
 
-    if (!userDoc) {
-      return res.status(400).json({ message: "User not found." });
+      if (!userDoc) {
+        return res.status(400).json({ message: "User not found." });
+      }
+
+      const rating = userDoc.ratings.find(
+        (r) => r.contentId === contentId && r.contentType === contentType
+      );
+
+      res.status(200).json({ rating: rating || null });
+    } catch (error) {
+      res.status(400).json({ message: error.message });
     }
-
-    const rating = userDoc.ratings.find(
-      r => r.contentId === contentId && r.contentType === contentType
-    );
-
-    res.status(200).json({ rating: rating || null });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
   }
-});
+);
 
 // Save content for later
 app.post("/api/save-for-later", verifyToken, async (req, res) => {
   try {
-    const { contentId, contentType, title, posterPath, backdropPath, overview } = req.body;
+    const {
+      contentId,
+      contentType,
+      title,
+      posterPath,
+      backdropPath,
+      overview,
+    } = req.body;
 
     if (!contentId || !contentType || !title) {
-      return res.status(400).json({ message: "Content ID, type, and title are required." });
+      return res
+        .status(400)
+        .json({ message: "Content ID, type, and title are required." });
     }
 
     const userDoc = await User.findById(req.userId);
@@ -417,7 +442,7 @@ app.post("/api/save-for-later", verifyToken, async (req, res) => {
 
     // Check if already saved
     const alreadySaved = userDoc.savedForLater.find(
-      item => item.contentId === contentId && item.contentType === contentType
+      (item) => item.contentId === contentId && item.contentType === contentType
     );
 
     if (alreadySaved) {
@@ -432,14 +457,14 @@ app.post("/api/save-for-later", verifyToken, async (req, res) => {
       posterPath,
       backdropPath,
       overview,
-      savedAt: new Date()
+      savedAt: new Date(),
     });
 
     await userDoc.save();
 
     res.status(200).json({
       message: "Content saved successfully!",
-      savedItem: userDoc.savedForLater[userDoc.savedForLater.length - 1]
+      savedItem: userDoc.savedForLater[userDoc.savedForLater.length - 1],
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -456,7 +481,7 @@ app.get("/api/save-for-later", verifyToken, async (req, res) => {
     }
 
     res.status(200).json({
-      savedItems: userDoc.savedForLater || []
+      savedItems: userDoc.savedForLater || [],
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -464,54 +489,64 @@ app.get("/api/save-for-later", verifyToken, async (req, res) => {
 });
 
 // Remove from saved for later
-app.delete("/api/save-for-later/:contentId/:contentType", verifyToken, async (req, res) => {
-  try {
-    const { contentId, contentType } = req.params;
+app.delete(
+  "/api/save-for-later/:contentId/:contentType",
+  verifyToken,
+  async (req, res) => {
+    try {
+      const { contentId, contentType } = req.params;
 
-    const userDoc = await User.findById(req.userId);
+      const userDoc = await User.findById(req.userId);
 
-    if (!userDoc) {
-      return res.status(400).json({ message: "User not found." });
+      if (!userDoc) {
+        return res.status(400).json({ message: "User not found." });
+      }
+
+      // Remove from saved list
+      userDoc.savedForLater = userDoc.savedForLater.filter(
+        (item) =>
+          !(item.contentId === contentId && item.contentType === contentType)
+      );
+
+      await userDoc.save();
+
+      res.status(200).json({
+        message: "Content removed from saved list.",
+        savedItems: userDoc.savedForLater,
+      });
+    } catch (error) {
+      res.status(400).json({ message: error.message });
     }
-
-    // Remove from saved list
-    userDoc.savedForLater = userDoc.savedForLater.filter(
-      item => !(item.contentId === contentId && item.contentType === contentType)
-    );
-
-    await userDoc.save();
-
-    res.status(200).json({
-      message: "Content removed from saved list.",
-      savedItems: userDoc.savedForLater
-    });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
   }
-});
+);
 
 // Check if content is saved
-app.get("/api/save-for-later/check/:contentId/:contentType", verifyToken, async (req, res) => {
-  try {
-    const { contentId, contentType } = req.params;
+app.get(
+  "/api/save-for-later/check/:contentId/:contentType",
+  verifyToken,
+  async (req, res) => {
+    try {
+      const { contentId, contentType } = req.params;
 
-    const userDoc = await User.findById(req.userId);
+      const userDoc = await User.findById(req.userId);
 
-    if (!userDoc) {
-      return res.status(400).json({ message: "User not found." });
+      if (!userDoc) {
+        return res.status(400).json({ message: "User not found." });
+      }
+
+      const isSaved = userDoc.savedForLater.some(
+        (item) =>
+          item.contentId === contentId && item.contentType === contentType
+      );
+
+      res.status(200).json({ isSaved });
+    } catch (error) {
+      res.status(400).json({ message: error.message });
     }
-
-    const isSaved = userDoc.savedForLater.some(
-      item => item.contentId === contentId && item.contentType === contentType
-    );
-
-    res.status(200).json({ isSaved });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
   }
-});
+);
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, "0.0.0.0", () => {
   connectToDB();
   console.log(`Server is running on http://0.0.0.0:${PORT}`);
   console.log(`Server accessible at http://localhost:${PORT}`);

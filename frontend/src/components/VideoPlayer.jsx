@@ -6,32 +6,32 @@ import toast from "react-hot-toast";
 // Extract YouTube video ID from URL and convert to embed URL
 const getYouTubeEmbedUrl = (url) => {
   if (!url) return null;
-  
+
   // Extract video ID from various YouTube URL formats
   let videoId = null;
-  
+
   // Handle watch URLs: https://www.youtube.com/watch?v=VIDEO_ID
   const watchMatch = url.match(/[?&]v=([^&]+)/);
   if (watchMatch) {
     videoId = watchMatch[1];
   }
-  
+
   // Handle embed URLs: https://www.youtube.com/embed/VIDEO_ID
   const embedMatch = url.match(/\/embed\/([^?&]+)/);
   if (embedMatch) {
     videoId = embedMatch[1];
   }
-  
+
   // Handle short URLs: https://youtu.be/VIDEO_ID
   const shortMatch = url.match(/youtu\.be\/([^?&]+)/);
   if (shortMatch) {
     videoId = shortMatch[1];
   }
-  
+
   if (videoId) {
     return `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1`;
   }
-  
+
   return null;
 };
 
@@ -56,9 +56,7 @@ const VideoPlayer = ({ videoUrl, contentId, contentType, onClose, title }) => {
     // Fetch user's existing rating
     const fetchRating = async () => {
       try {
-        const response = await API.get(
-          `/ratings/${contentId}/${contentType}`
-        );
+        const response = await API.get(`/ratings/${contentId}/${contentType}`);
         if (response.data.rating) {
           console.log(
             "⭐ [VideoPlayer] Existing rating found:",
@@ -139,26 +137,24 @@ const VideoPlayer = ({ videoUrl, contentId, contentType, onClose, title }) => {
   console.log("🎬 [VideoPlayer] Embed URL:", embedUrl);
 
   return (
-    <div className="fixed inset-0 bg-black z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black z-50 flex items-center justify-center p-4 overflow-auto">
       <div className="relative w-full max-w-7xl mx-auto">
-        {/* Close button */}
         <button
           onClick={() => {
             console.log("❌ [VideoPlayer] Close button clicked");
             onClose();
           }}
-          className="absolute top-0 right-0 z-10 bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition -translate-y-12"
+          className="absolute top-4 right-4 z-50 bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition"
         >
           <X className="w-6 h-6 text-white" />
         </button>
-
-        {/* Video Player */}
         <div
-          className="relative w-full bg-black"
+          className="relative w-full bg-black mx-auto"
           style={{
             width: "100%",
-            paddingTop: "56.25%", // 16:9 aspect ratio
-            height: 0,
+            aspectRatio: "16 / 9",
+            maxWidth: "1280px",
+            maxHeight: "80vh",
             position: "relative",
           }}
         >

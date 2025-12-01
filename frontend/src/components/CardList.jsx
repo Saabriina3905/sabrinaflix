@@ -32,8 +32,8 @@ const CardList = ({ title, category }) => {
       <Swiper
         modules={[Autoplay]}
         autoplay={{
-          delay: 2.5, // 2.5 seconds
-          disableOnInteraction: false, // keeps autoplay alive when user swipes
+          delay: 2500,
+          disableOnInteraction: false,
         }}
         slidesPerView={"auto"}
         spaceBetween={10}
