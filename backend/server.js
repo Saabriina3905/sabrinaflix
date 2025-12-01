@@ -124,8 +124,7 @@ res.cookie("token", token, {
   httpOnly: true,
   secure: true,
   sameSite: "none",
-  path: "/",
-  domain: "sabrinaflix.onrender.com"
+  path: "/"
 });
 
     }
@@ -173,8 +172,7 @@ app.post("/api/login", async (req, res) => {
   httpOnly: true,
   secure: true,
   sameSite: "none",
-  path: "/",
-  domain: "sabrinaflix.onrender.com"
+  path: "/"
 });
 
     }

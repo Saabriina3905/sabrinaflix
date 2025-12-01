@@ -10,6 +10,7 @@ const API = axios.create({
   },
 });
 
+API.defaults.withCredentials = true;
 // Handle errors
 API.interceptors.response.use(
   (res) => res,
