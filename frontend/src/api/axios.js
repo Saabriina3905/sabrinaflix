@@ -2,7 +2,7 @@ import axios from "axios";
 
 const API = axios.create({
   baseURL: import.meta.env.PROD
-    ? "https://aiflix-1.onrender.com//api"
+    ? "https://sabrinaflix.onrender.com/api"
     : "http://172.20.10.5:5000/api",
   withCredentials: true,
   headers: {
