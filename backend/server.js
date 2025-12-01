@@ -120,12 +120,14 @@ app.post("/api/signup", async (req, res) => {
         expiresIn: "7d",
       });
 
-      res.cookie("token", token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        path: "/",
-      });
+res.cookie("token", token, {
+  httpOnly: true,
+  secure: true,
+  sameSite: "none",
+  path: "/",
+  domain: "sabrinaflix.onrender.com"
+});
+
     }
 
     return res
@@ -167,12 +169,14 @@ app.post("/api/login", async (req, res) => {
         expiresIn: "7d",
       });
 
-      res.cookie("token", token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        path: "/",
-      });
+    res.cookie("token", token, {
+  httpOnly: true,
+  secure: true,
+  sameSite: "none",
+  path: "/",
+  domain: "sabrinaflix.onrender.com"
+});
+
     }
 
     return res
