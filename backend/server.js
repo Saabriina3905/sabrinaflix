@@ -13,7 +13,7 @@ const app = express();
 
 const PORT = process.env.PORT || 5000;
 
-// Middlewares for 
+// Middlewares for
 
 const allowedOrigins = [
   "https://sabrinaflix-uwfo.vercel.app",
@@ -122,8 +122,8 @@ app.post("/api/signup", async (req, res) => {
 
       res.cookie("token", token, {
         httpOnly: true,
-        secure: false,
-        sameSite: "lax",
+        secure: true,
+        sameSite: "none",
         path: "/",
       });
     }
@@ -169,8 +169,8 @@ app.post("/api/login", async (req, res) => {
 
       res.cookie("token", token, {
         httpOnly: true,
-        secure: false,
-        sameSite: "lax",
+        secure: true,
+        sameSite: "none",
         path: "/",
       });
     }
