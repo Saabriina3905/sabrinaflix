@@ -1,22 +1,27 @@
 import express from "express";
-import { connectToDB } from "./config/db.js";
 import dotenv from "dotenv";
-import User from "./models/user.model.js";
+import cors from "cors";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
-import cors from "cors";
+import { connectToDB } from "./config/db.js";
+import User from "./models/user.model.js";
 
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Allowed domains
+// --------------------------------------------------
+// ALLOWED FRONTEND ORIGINS
+// --------------------------------------------------
 const allowedOrigins = [
   "https://sabrinaflix-uwfo.vercel.app",
   "http://localhost:5173",
   "http://172.20.10.5:5173",
 ];
 
+// --------------------------------------------------
+// CORS MIDDLEWARE
+// --------------------------------------------------
 app.use(
   cors({
     origin: allowedOrigins,
@@ -25,19 +30,28 @@ app.use(
   })
 );
 
-// Other middlewares
+// --------------------------------------------------
 app.use(express.json());
 
+// --------------------------------------------------
+// HOME ROUTE
+// --------------------------------------------------
 app.get("/", (req, res) => {
-  res.send("This Is Sabrinaflix (Bearer Token Version)");
+  res.send("SabrinaFlix Backend – Bearer Token Version");
 });
 
-// ------------ AUTH HELPER (NO COOKIES) -----------------
+// --------------------------------------------------
+// TOKEN HELPER
+// --------------------------------------------------
 const createToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
 };
 
-// ------------ VERIFY TOKEN MIDDLEWARE ------------------
+// --------------------------------------------------
+// AUTH MIDDLEWARE
+// --------------------------------------------------
 const verifyToken = (req, res, next) => {
   const header = req.headers.authorization;
 
@@ -56,14 +70,17 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-// ===================== SIGNUP =====================
+// ====================================================================
+// AUTH ROUTES
+// ====================================================================
+
+// SIGNUP
 app.post("/api/signup", async (req, res) => {
   const { username, email, password } = req.body;
 
   try {
-    if (!username || !email || !password) {
-      throw new Error("All fields are required!");
-    }
+    if (!username || !email || !password)
+      return res.status(400).json({ message: "All fields are required." });
 
     const emailExists = await User.findOne({ email });
     if (emailExists)
@@ -71,159 +88,307 @@ app.post("/api/signup", async (req, res) => {
 
     const usernameExists = await User.findOne({ username });
     if (usernameExists)
-      return res
-        .status(400)
-        .json({ message: "Username is taken, try another name." });
+      return res.status(400).json({ message: "Username already taken." });
 
-    const hashedPassword = await bcryptjs.hash(password, 10);
+    const hashed = await bcryptjs.hash(password, 10);
 
-    const userDoc = await User.create({
+    const user = await User.create({
       username,
       email,
-      password: hashedPassword,
+      password: hashed,
     });
 
-    const token = createToken(userDoc._id);
+    const token = createToken(user._id);
 
-    return res.status(200).json({
-      user: userDoc,
+    res.status(200).json({
+      user,
       token,
       message: "User created successfully.",
     });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
 });
 
-// ===================== LOGIN =====================
+// LOGIN
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
 
   try {
     if (!username || !password)
-      return res
-        .status(400)
-        .json({ message: "Username and password are required." });
+      return res.status(400).json({ message: "Missing fields." });
 
-    const userDoc = await User.findOne({ username });
-    if (!userDoc)
+    const user = await User.findOne({ username });
+    if (!user)
       return res.status(400).json({ message: "Invalid credentials." });
 
-    const isPasswordValid = await bcryptjs.compare(password, userDoc.password);
-    if (!isPasswordValid)
+    const valid = await bcryptjs.compare(password, user.password);
+    if (!valid)
       return res.status(400).json({ message: "Invalid credentials." });
 
-    const token = createToken(userDoc._id);
+    const token = createToken(user._id);
 
-    return res.status(200).json({
-      user: userDoc,
+    res.status(200).json({
+      user,
       token,
-      message: "Logged in successfully.",
+      message: "Login successful.",
     });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
 });
 
-// ===================== FETCH USER =====================
+// FETCH USER
 app.get("/api/fetch-user", verifyToken, async (req, res) => {
   try {
-    const userDoc = await User.findById(req.userId).select("-password");
-    if (!userDoc) return res.status(400).json({ message: "User not found." });
+    const user = await User.findById(req.userId).select("-password");
 
-    return res.status(200).json({ user: userDoc });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
+    if (!user)
+      return res.status(400).json({ message: "User not found." });
+
+    res.status(200).json({ user });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
 });
 
-// ===================== LOGOUT =====================
-app.post("/api/logout", async (req, res) => {
-  // For token-based auth, logout is frontend-only.
+// LOGOUT (Frontend only)
+app.post("/api/logout", (req, res) => {
   return res.status(200).json({ message: "Logged out successfully." });
 });
 
-// ===================== SUBSCRIPTIONS =====================
+// ====================================================================
+// SUBSCRIPTION ROUTES
+// ====================================================================
+
+// START TRIAL
 app.post("/api/subscription/start-trial", verifyToken, async (req, res) => {
   try {
-    const userDoc = await User.findById(req.userId);
+    const user = await User.findById(req.userId);
 
-    if (!userDoc) return res.status(400).json({ message: "User not found." });
+    if (!user)
+      return res.status(400).json({ message: "User not found." });
 
-    const trialStartDate = new Date();
-    const subscriptionEndDate = new Date();
-    subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
+    const trialStart = new Date();
+    const subscriptionEnd = new Date();
+    subscriptionEnd.setMonth(subscriptionEnd.getMonth() + 1);
 
-    userDoc.subscriptionStatus = "trial";
-    userDoc.trialStartDate = trialStartDate;
-    userDoc.subscriptionEndDate = subscriptionEndDate;
+    user.subscriptionStatus = "trial";
+    user.trialStartDate = trialStart;
+    user.subscriptionEndDate = subscriptionEnd;
 
-    await userDoc.save();
+    await user.save();
 
     res.status(200).json({
-      message: "Free trial started successfully!",
-      subscriptionStatus: userDoc.subscriptionStatus,
-      subscriptionEndDate: userDoc.subscriptionEndDate,
+      message: "Free trial started.",
+      subscriptionStatus: user.subscriptionStatus,
+      subscriptionEndDate: user.subscriptionEndDate,
     });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
 });
 
+// SUBSCRIPTION STATUS
 app.get("/api/subscription/status", verifyToken, async (req, res) => {
   try {
-    const userDoc = await User.findById(req.userId).select("-password");
-    if (!userDoc) return res.status(400).json({ message: "User not found." });
+    const user = await User.findById(req.userId).select("-password");
+    if (!user)
+      return res.status(400).json({ message: "User not found." });
 
-    if (
-      userDoc.subscriptionEndDate &&
-      new Date(userDoc.subscriptionEndDate) < new Date()
-    ) {
-      userDoc.subscriptionStatus = "expired";
-      await userDoc.save();
+    // auto expire
+    if (user.subscriptionEndDate < new Date()) {
+      user.subscriptionStatus = "expired";
+      await user.save();
     }
 
     const isActive =
-      (userDoc.subscriptionStatus === "trial" ||
-        userDoc.subscriptionStatus === "active") &&
-      userDoc.subscriptionEndDate > new Date();
+      (user.subscriptionStatus === "trial" ||
+        user.subscriptionStatus === "active") &&
+      user.subscriptionEndDate > new Date();
 
     res.status(200).json({
-      subscriptionStatus: userDoc.subscriptionStatus,
-      subscriptionEndDate: userDoc.subscriptionEndDate,
-      trialStartDate: userDoc.trialStartDate,
+      subscriptionStatus: user.subscriptionStatus,
+      subscriptionEndDate: user.subscriptionEndDate,
+      trialStartDate: user.trialStartDate,
       isActive,
     });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
 });
 
+// UPGRADE
 app.post("/api/subscription/upgrade", verifyToken, async (req, res) => {
   try {
-    const userDoc = await User.findById(req.userId);
-    if (!userDoc) return res.status(400).json({ message: "User not found." });
+    const user = await User.findById(req.userId);
+    if (!user)
+      return res.status(400).json({ message: "User not found." });
 
-    const subscriptionEndDate = new Date();
-    subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
+    const subscriptionEnd = new Date();
+    subscriptionEnd.setMonth(subscriptionEnd.getMonth() + 1);
 
-    userDoc.subscriptionStatus = "active";
-    userDoc.subscriptionEndDate = subscriptionEndDate;
+    user.subscriptionStatus = "active";
+    user.subscriptionEndDate = subscriptionEnd;
 
-    await userDoc.save();
+    await user.save();
 
     res.status(200).json({
-      message: "Subscription upgraded successfully!",
-      subscriptionStatus: userDoc.subscriptionStatus,
-      subscriptionEndDate: userDoc.subscriptionEndDate,
+      message: "Subscription upgraded.",
+      subscriptionStatus: user.subscriptionStatus,
+      subscriptionEndDate: user.subscriptionEndDate,
     });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
 });
 
-// ============================================
+// ====================================================================
+// RATINGS
+// ====================================================================
+app.post("/api/ratings", verifyToken, async (req, res) => {
+  try {
+    const { contentId, contentType, rating } = req.body;
+
+    if (!contentId || !contentType || !rating)
+      return res.status(400).json({ message: "Missing fields." });
+
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(400).json({ message: "User not found." });
+
+    let existing = user.ratings.find(
+      (r) => r.contentId === contentId && r.contentType === contentType
+    );
+
+    if (existing) {
+      existing.rating = rating;
+      existing.createdAt = new Date();
+    } else {
+      user.ratings.push({
+        contentId,
+        contentType,
+        rating,
+        createdAt: new Date(),
+      });
+    }
+
+    await user.save();
+
+    res.status(200).json({ message: "Rating saved." });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+app.get("/api/ratings/:contentId/:contentType", verifyToken, async (req, res) => {
+  try {
+    const { contentId, contentType } = req.params;
+
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(400).json({ message: "User not found." });
+
+    const rating = user.ratings.find(
+      (r) => r.contentId === contentId && r.contentType === contentType
+    );
+
+    res.status(200).json({ rating: rating || null });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// ====================================================================
+// SAVE FOR LATER
+// ====================================================================
+app.post("/api/save-for-later", verifyToken, async (req, res) => {
+  try {
+    const { contentId, contentType, title, posterPath, backdropPath, overview } = req.body;
+
+    if (!contentId || !contentType || !title)
+      return res.status(400).json({ message: "Missing fields." });
+
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(400).json({ message: "User not found." });
+
+    const exists = user.savedForLater.find(
+      (item) => item.contentId === contentId && item.contentType === contentType
+    );
+
+    if (exists)
+      return res.status(400).json({ message: "Already saved." });
+
+    user.savedForLater.push({
+      contentId,
+      contentType,
+      title,
+      posterPath,
+      backdropPath,
+      overview,
+      savedAt: new Date(),
+    });
+
+    await user.save();
+    res.status(200).json({ message: "Saved." });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+app.get("/api/save-for-later", verifyToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select("-password");
+
+    if (!user) return res.status(400).json({ message: "User not found." });
+
+    res.status(200).json({ savedItems: user.savedForLater });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+app.delete("/api/save-for-later/:contentId/:contentType", verifyToken, async (req, res) => {
+  try {
+    const { contentId, contentType } = req.params;
+
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(400).json({ message: "User not found." });
+
+    user.savedForLater = user.savedForLater.filter(
+      (item) => !(item.contentId === contentId && item.contentType === contentType)
+    );
+
+    await user.save();
+
+    res.status(200).json({
+      message: "Removed.",
+      savedItems: user.savedForLater,
+    });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+app.get("/api/save-for-later/check/:contentId/:contentType", verifyToken, async (req, res) => {
+  try {
+    const { contentId, contentType } = req.params;
+
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(400).json({ message: "User not found." });
+
+    const isSaved = user.savedForLater.some(
+      (item) => item.contentId === contentId && item.contentType === contentType
+    );
+
+    res.status(200).json({ isSaved });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// ====================================================================
+// START SERVER
+// ====================================================================
 app.listen(PORT, "0.0.0.0", () => {
   connectToDB();
-  console.log(`Bearer Token Server running on PORT ${PORT}`);
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
 });
