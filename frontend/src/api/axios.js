@@ -4,21 +4,15 @@ const API = axios.create({
   baseURL: import.meta.env.PROD
     ? "https://sabrinaflix.onrender.com/api"
     : "http://172.20.10.5:5000/api",
-  withCredentials: true,
 });
 
-// ensure credentials always sent
-API.defaults.withCredentials = true;
-
-// Interceptor for errors
-API.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (!err.response) {
-      err.userMessage = "Cannot reach the server. Backend is offline.";
-    }
-    return Promise.reject(err);
+// AUTO ADD TOKEN TO EVERY REQUEST
+API.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-);
+  return config;
+});
 
 export default API;

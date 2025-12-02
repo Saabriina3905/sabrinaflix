@@ -10,48 +10,50 @@ export const useAuthStore = create((set) => ({
 
   // SIGNUP
   signup: async (username, email, password) => {
-    set({ isLoading: true, message: null });
+    set({ isLoading: true, error: null });
 
     try {
-      const response = await API.post(
-        "/signup",
-        { username, email, password },
-        { withCredentials: true }   // 🔥 REQUIRED FIX
-      );
+      const response = await API.post("/signup", {
+        username,
+        email,
+        password,
+      });
 
-      set({ user: response.data.user, isLoading: false });
+      const { user, token } = response.data;
+
+      // Save token
+      localStorage.setItem("token", token);
+
+      set({ user, isLoading: false });
+
+      return response.data;
     } catch (error) {
-      let errorMessage;
-
-      if (!error.response) {
-        errorMessage = "Network error. Please try again.";
-      } else {
-        errorMessage =
-          error.response?.data?.message || "Error signing up. Please try again.";
-      }
+      const errorMessage =
+        error.response?.data?.message || "Error signing up.";
 
       set({
         isLoading: false,
         error: errorMessage,
       });
 
-      error.userMessage = errorMessage;
-      throw error;
+      throw new Error(errorMessage);
     }
   },
 
   // LOGIN
   login: async (username, password) => {
-    set({ isLoading: true, message: null, error: null });
+    set({ isLoading: true, error: null, message: null });
 
     try {
-      const response = await API.post(
-        "/login",
-        { username, password },
-        { withCredentials: true }   // 🔥 REQUIRED FIX
-      );
+      const response = await API.post("/login", {
+        username,
+        password,
+      });
 
-      const { user, message } = response.data;
+      const { user, token, message } = response.data;
+
+      // Save token
+      localStorage.setItem("token", token);
 
       set({
         user,
@@ -59,78 +61,59 @@ export const useAuthStore = create((set) => ({
         isLoading: false,
       });
 
-      return { user, message };
+      return response.data;
     } catch (error) {
-      let errorMessage;
-
-      if (!error.response) {
-        errorMessage = "Network error. Please try again.";
-      } else {
-        errorMessage =
-          error.response?.data?.message || "Invalid username or password.";
-      }
+      const errorMessage =
+        error.response?.data?.message || "Invalid username or password.";
 
       set({
         isLoading: false,
         error: errorMessage,
       });
 
-      error.userMessage = errorMessage;
-      throw error;
+      throw new Error(errorMessage);
     }
   },
 
-  // FETCH USER
+  // FETCH LOGGED-IN USER USING TOKEN
   fetchUser: async () => {
-    set({ fetchingUser: true, error: null });
+    set({ fetchingUser: true });
 
     try {
-      const response = await API.get("/fetch-user", {
-        withCredentials: true,     // 🔥 REQUIRED FIX
-      });
+      const token = localStorage.getItem("token");
 
-      set({ user: response.data.user, fetchingUser: false });
-    } catch (error) {
+      if (!token) {
+        set({ user: null, fetchingUser: false });
+        return;
+      }
+
+      const response = await API.get("/fetch-user");
+
       set({
+        user: response.data.user,
         fetchingUser: false,
-        user: null,
-        error: null,
       });
+    } catch (error) {
+      // Token invalid → clear everything
+      localStorage.removeItem("token");
 
-      throw error;
+      set({
+        user: null,
+        fetchingUser: false,
+      });
     }
   },
 
   // LOGOUT
-  logout: async () => {
-    set({ isLoading: true, error: null, message: null });
+  logout: () => {
+    // Very important: NO BACKEND CALL NEEDED
+    localStorage.removeItem("token");
 
-    try {
-      const response = await API.post(
-        "/logout",
-        {},
-        { withCredentials: true }   // 🔥 REQUIRED FIX
-      );
-
-      set({
-        message: response.data.message,
-        isLoading: false,
-        user: null,
-      });
-
-      return { message: response.data.message };
-    } catch (error) {
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Error logging out.";
-
-      set({
-        isLoading: false,
-        error: errorMessage,
-      });
-
-      throw error;
-    }
+    set({
+      user: null,
+      error: null,
+      message: "Logged out successfully",
+      isLoading: false,
+    });
   },
 }));

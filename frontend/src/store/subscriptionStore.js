@@ -9,11 +9,15 @@ export const useSubscriptionStore = create((set) => ({
   isLoading: false,
   error: null,
 
+  // ---------------------------------------------------
+  // FETCH SUBSCRIPTION STATUS
+  // ---------------------------------------------------
   fetchSubscriptionStatus: async () => {
     set({ isLoading: true, error: null });
 
     try {
-      const response = await API.get("/subscription/status", { withCredentials: true });
+      const response = await API.get("/subscription/status");
+
       set({
         subscriptionStatus: response.data.subscriptionStatus,
         subscriptionEndDate: response.data.subscriptionEndDate,
@@ -21,55 +25,57 @@ export const useSubscriptionStore = create((set) => ({
         isActive: response.data.isActive,
         isLoading: false,
       });
-      return response.data;
 
+      return response.data;
     } catch (error) {
       set({
         isLoading: false,
-        error: error.response?.data?.message || "Failed to fetch subscription status",
+        error:
+          error.response?.data?.message ||
+          "Failed to fetch subscription status",
         isActive: false,
       });
+
       return null;
     }
   },
 
+  // ---------------------------------------------------
+  // START FREE TRIAL
+  // ---------------------------------------------------
   startTrial: async () => {
     set({ isLoading: true, error: null });
 
     try {
-      const response = await API.post(
-        "/subscription/start-trial",
-        {},
-        { withCredentials: true }  // 🔥 FIX 1
-      );
+      const response = await API.post("/subscription/start-trial");
 
       set({
         subscriptionStatus: response.data.subscriptionStatus,
         subscriptionEndDate: response.data.subscriptionEndDate,
+        trialStartDate: response.data.trialStartDate,
         isActive: true,
         isLoading: false,
       });
 
       return response.data;
-
     } catch (error) {
       set({
         isLoading: false,
         error: error.response?.data?.message || "Failed to start trial",
       });
+
       throw error;
     }
   },
 
+  // ---------------------------------------------------
+  // UPGRADE SUBSCRIPTION (PAID)
+  // ---------------------------------------------------
   upgradeSubscription: async () => {
     set({ isLoading: true, error: null });
 
     try {
-      const response = await API.post(
-        "/subscription/upgrade",
-        {},
-        { withCredentials: true }  // 🔥 FIX 2
-      );
+      const response = await API.post("/subscription/upgrade");
 
       set({
         subscriptionStatus: response.data.subscriptionStatus,
@@ -79,12 +85,14 @@ export const useSubscriptionStore = create((set) => ({
       });
 
       return response.data;
-
     } catch (error) {
       set({
         isLoading: false,
-        error: error.response?.data?.message || "Failed to upgrade subscription",
+        error:
+          error.response?.data?.message ||
+          "Failed to upgrade subscription",
       });
+
       throw error;
     }
   },

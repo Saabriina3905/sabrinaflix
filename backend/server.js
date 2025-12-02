@@ -4,17 +4,13 @@ import dotenv from "dotenv";
 import User from "./models/user.model.js";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
-import cookieParser from "cookie-parser";
 import cors from "cors";
 
 dotenv.config();
-
 const app = express();
-
 const PORT = process.env.PORT || 5000;
 
-// Middlewares for
-
+// Allowed domains
 const allowedOrigins = [
   "https://sabrinaflix-uwfo.vercel.app",
   "http://localhost:5173",
@@ -23,65 +19,44 @@ const allowedOrigins = [
 
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin (mobile apps, Postman, server-to-server)
-      if (!origin) {
-        return callback(null, true);
-      }
-
-      // Check if origin is in allowed list
-      if (allowedOrigins.includes(origin)) {
-        console.log("✅ CORS allowed origin:", origin);
-        return callback(null, true);
-      }
-
-      // Allow Vercel preview deployments (pattern: *.vercel.app)
-      if (origin.includes(".vercel.app")) {
-        console.log("✅ CORS allowed Vercel preview:", origin);
-        return callback(null, true);
-      }
-
-      // Log for debugging
-      console.log("❌ CORS blocked origin:", origin);
-      console.log("✅ Allowed origins:", allowedOrigins);
-
-      // Return error to block the request
-      return callback(new Error(`CORS: Origin ${origin} is not allowed`));
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "X-Requested-With",
-      "Accept",
-      "Origin",
-      "Access-Control-Request-Method",
-      "Access-Control-Request-Headers",
-    ],
-    exposedHeaders: ["Content-Type"],
-    preflightContinue: false,
-    optionsSuccessStatus: 200,
+    origin: allowedOrigins,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
 // Other middlewares
 app.use(express.json());
-app.use(cookieParser());
 
 app.get("/", (req, res) => {
-  res.send("This Is Sabrinaflix");
+  res.send("This Is Sabrinaflix (Bearer Token Version)");
 });
 
-// Test endpoint to verify CORS
-app.get("/api/test-cors", (req, res) => {
-  res.json({
-    message: "CORS is working!",
-    origin: req.headers.origin,
-    timestamp: new Date().toISOString(),
-  });
-});
+// ------------ AUTH HELPER (NO COOKIES) -----------------
+const createToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+};
 
+// ------------ VERIFY TOKEN MIDDLEWARE ------------------
+const verifyToken = (req, res, next) => {
+  const header = req.headers.authorization;
+
+  if (!header || !header.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "No token provided." });
+  }
+
+  const token = header.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.id;
+    next();
+  } catch (err) {
+    return res.status(401).json({ message: "Invalid token" });
+  }
+};
+
+// ===================== SIGNUP =====================
 app.post("/api/signup", async (req, res) => {
   const { username, email, password } = req.body;
 
@@ -91,18 +66,14 @@ app.post("/api/signup", async (req, res) => {
     }
 
     const emailExists = await User.findOne({ email });
-
-    if (emailExists) {
+    if (emailExists)
       return res.status(400).json({ message: "User already exists." });
-    }
 
     const usernameExists = await User.findOne({ username });
-
-    if (usernameExists) {
+    if (usernameExists)
       return res
         .status(400)
         .json({ message: "Username is taken, try another name." });
-    }
 
     const hashedPassword = await bcryptjs.hash(password, 10);
 
@@ -112,155 +83,73 @@ app.post("/api/signup", async (req, res) => {
       password: hashedPassword,
     });
 
+    const token = createToken(userDoc._id);
 
-    if (userDoc) {
-      const token = jwt.sign({ id: userDoc._id }, process.env.JWT_SECRET, {
-        expiresIn: "7d",
-      });
-
-      res.cookie("token", token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        path: "/",
-      });
-    }
-
-    return res
-      .status(200)
-      .json({ user: userDoc, message: "User created successfully." });
+    return res.status(200).json({
+      user: userDoc,
+      token,
+      message: "User created successfully.",
+    });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 });
 
+// ===================== LOGIN =====================
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    // Validate input
-    if (!username || !password) {
+    if (!username || !password)
       return res
         .status(400)
         .json({ message: "Username and password are required." });
-    }
 
     const userDoc = await User.findOne({ username });
-    if (!userDoc) {
+    if (!userDoc)
       return res.status(400).json({ message: "Invalid credentials." });
-    }
 
-    const isPasswordValid = await bcryptjs.compareSync(
-      password,
-      userDoc.password
-    );
-    if (!isPasswordValid) {
+    const isPasswordValid = await bcryptjs.compare(password, userDoc.password);
+    if (!isPasswordValid)
       return res.status(400).json({ message: "Invalid credentials." });
-    }
 
-    // JWT
-    if (userDoc) {
-      // jwt.sign(payload, secret, options)
-      const token = jwt.sign({ id: userDoc._id }, process.env.JWT_SECRET, {
-        expiresIn: "7d",
-      });
+    const token = createToken(userDoc._id);
 
-      res.cookie("token", token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        path: "/",
-      });
-    }
-
-    return res
-      .status(200)
-      .json({ user: userDoc, message: "Logged in successfully." });
+    return res.status(200).json({
+      user: userDoc,
+      token,
+      message: "Logged in successfully.",
+    });
   } catch (error) {
-    console.log("Error Logging in: ", error.message);
     res.status(400).json({ message: error.message });
   }
 });
 
-app.get("/api/fetch-user", async (req, res) => {
-  const { token } = req.cookies;
-
-  if (!token) {
-    return res.status(401).json({ message: "No token provided." });
-  }
-
+// ===================== FETCH USER =====================
+app.get("/api/fetch-user", verifyToken, async (req, res) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userDoc = await User.findById(req.userId).select("-password");
+    if (!userDoc) return res.status(400).json({ message: "User not found." });
 
-    if (!decoded) {
-      return res.status(401).json({ message: "Invalid token" });
-    }
-
-    const userDoc = await User.findById(decoded.id).select("-password");
-
-    if (!userDoc) {
-      return res.status(400).json({ message: "No user found." });
-    }
-
-    res.status(200).json({ user: userDoc });
+    return res.status(200).json({ user: userDoc });
   } catch (error) {
-    console.log("Error in fetching user: ", error.message);
-    return res.status(400).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 });
 
+// ===================== LOGOUT =====================
 app.post("/api/logout", async (req, res) => {
-  res.clearCookie("token", {
-  httpOnly: true,
-  secure: true,
-  sameSite: "none",
-  path: "/",
+  // For token-based auth, logout is frontend-only.
+  return res.status(200).json({ message: "Logged out successfully." });
 });
 
-  res.status(200).json({ message: "Logged out successfully" });
-});
-
-// Middleware to verify JWT token
-const verifyToken = async (req, res, next) => {
-  const { token } = req.cookies;
-
-  if (!token) {
-    return res.status(401).json({ message: "No token provided." });
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.id;
-    next();
-  } catch (error) {
-    return res.status(401).json({ message: "Invalid token" });
-  }
-};
-
-// Start free trial (1 month)
+// ===================== SUBSCRIPTIONS =====================
 app.post("/api/subscription/start-trial", verifyToken, async (req, res) => {
   try {
     const userDoc = await User.findById(req.userId);
 
-    if (!userDoc) {
-      return res.status(400).json({ message: "User not found." });
-    }
+    if (!userDoc) return res.status(400).json({ message: "User not found." });
 
-    // Check if user already has an active subscription or trial
-    if (
-      userDoc.subscriptionStatus === "trial" ||
-      userDoc.subscriptionStatus === "active"
-    ) {
-      const endDate = new Date(userDoc.subscriptionEndDate);
-      if (endDate > new Date()) {
-        return res.status(400).json({
-          message: "You already have an active subscription or trial.",
-          subscriptionEndDate: userDoc.subscriptionEndDate,
-        });
-      }
-    }
-
-    // Start 1 month free trial
     const trialStartDate = new Date();
     const subscriptionEndDate = new Date();
     subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
@@ -281,16 +170,11 @@ app.post("/api/subscription/start-trial", verifyToken, async (req, res) => {
   }
 });
 
-// Check subscription status
 app.get("/api/subscription/status", verifyToken, async (req, res) => {
   try {
     const userDoc = await User.findById(req.userId).select("-password");
+    if (!userDoc) return res.status(400).json({ message: "User not found." });
 
-    if (!userDoc) {
-      return res.status(400).json({ message: "User not found." });
-    }
-
-    // Check if subscription has expired
     if (
       userDoc.subscriptionEndDate &&
       new Date(userDoc.subscriptionEndDate) < new Date()
@@ -302,8 +186,7 @@ app.get("/api/subscription/status", verifyToken, async (req, res) => {
     const isActive =
       (userDoc.subscriptionStatus === "trial" ||
         userDoc.subscriptionStatus === "active") &&
-      userDoc.subscriptionEndDate &&
-      new Date(userDoc.subscriptionEndDate) > new Date();
+      userDoc.subscriptionEndDate > new Date();
 
     res.status(200).json({
       subscriptionStatus: userDoc.subscriptionStatus,
@@ -316,16 +199,11 @@ app.get("/api/subscription/status", verifyToken, async (req, res) => {
   }
 });
 
-// Upgrade to paid subscription
 app.post("/api/subscription/upgrade", verifyToken, async (req, res) => {
   try {
     const userDoc = await User.findById(req.userId);
+    if (!userDoc) return res.status(400).json({ message: "User not found." });
 
-    if (!userDoc) {
-      return res.status(400).json({ message: "User not found." });
-    }
-
-    // Set subscription to active and extend by 1 month
     const subscriptionEndDate = new Date();
     subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
 
@@ -344,215 +222,8 @@ app.post("/api/subscription/upgrade", verifyToken, async (req, res) => {
   }
 });
 
-// Add rating for content
-app.post("/api/ratings", verifyToken, async (req, res) => {
-  try {
-    const { contentId, contentType, rating } = req.body;
-
-    if (!contentId || !contentType || !rating) {
-      return res.status(400).json({ message: "All fields are required." });
-    }
-
-    if (rating < 1 || rating > 5) {
-      return res
-        .status(400)
-        .json({ message: "Rating must be between 1 and 5." });
-    }
-
-    const userDoc = await User.findById(req.userId);
-
-    if (!userDoc) {
-      return res.status(400).json({ message: "User not found." });
-    }
-
-    // Check if user already rated this content
-    const existingRating = userDoc.ratings.find(
-      (r) => r.contentId === contentId && r.contentType === contentType
-    );
-
-    if (existingRating) {
-      // Update existing rating
-      existingRating.rating = rating;
-      existingRating.createdAt = new Date();
-    } else {
-      // Add new rating
-      userDoc.ratings.push({
-        contentId,
-        contentType,
-        rating,
-        createdAt: new Date(),
-      });
-    }
-
-    await userDoc.save();
-
-    res.status(200).json({
-      message: "Rating saved successfully!",
-      rating: existingRating || userDoc.ratings[userDoc.ratings.length - 1],
-    });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
-
-// Get user's rating for specific content
-app.get(
-  "/api/ratings/:contentId/:contentType",
-  verifyToken,
-  async (req, res) => {
-    try {
-      const { contentId, contentType } = req.params;
-
-      const userDoc = await User.findById(req.userId);
-
-      if (!userDoc) {
-        return res.status(400).json({ message: "User not found." });
-      }
-
-      const rating = userDoc.ratings.find(
-        (r) => r.contentId === contentId && r.contentType === contentType
-      );
-
-      res.status(200).json({ rating: rating || null });
-    } catch (error) {
-      res.status(400).json({ message: error.message });
-    }
-  }
-);
-
-// Save content for later
-app.post("/api/save-for-later", verifyToken, async (req, res) => {
-  try {
-    const {
-      contentId,
-      contentType,
-      title,
-      posterPath,
-      backdropPath,
-      overview,
-    } = req.body;
-
-    if (!contentId || !contentType || !title) {
-      return res
-        .status(400)
-        .json({ message: "Content ID, type, and title are required." });
-    }
-
-    const userDoc = await User.findById(req.userId);
-
-    if (!userDoc) {
-      return res.status(400).json({ message: "User not found." });
-    }
-
-    // Check if already saved
-    const alreadySaved = userDoc.savedForLater.find(
-      (item) => item.contentId === contentId && item.contentType === contentType
-    );
-
-    if (alreadySaved) {
-      return res.status(400).json({ message: "Content already saved." });
-    }
-
-    // Add to saved list
-    userDoc.savedForLater.push({
-      contentId,
-      contentType,
-      title,
-      posterPath,
-      backdropPath,
-      overview,
-      savedAt: new Date(),
-    });
-
-    await userDoc.save();
-
-    res.status(200).json({
-      message: "Content saved successfully!",
-      savedItem: userDoc.savedForLater[userDoc.savedForLater.length - 1],
-    });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
-
-// Get saved for later items
-app.get("/api/save-for-later", verifyToken, async (req, res) => {
-  try {
-    const userDoc = await User.findById(req.userId).select("-password");
-
-    if (!userDoc) {
-      return res.status(400).json({ message: "User not found." });
-    }
-
-    res.status(200).json({
-      savedItems: userDoc.savedForLater || [],
-    });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
-
-// Remove from saved for later
-app.delete(
-  "/api/save-for-later/:contentId/:contentType",
-  verifyToken,
-  async (req, res) => {
-    try {
-      const { contentId, contentType } = req.params;
-
-      const userDoc = await User.findById(req.userId);
-
-      if (!userDoc) {
-        return res.status(400).json({ message: "User not found." });
-      }
-
-      // Remove from saved list
-      userDoc.savedForLater = userDoc.savedForLater.filter(
-        (item) =>
-          !(item.contentId === contentId && item.contentType === contentType)
-      );
-
-      await userDoc.save();
-
-      res.status(200).json({
-        message: "Content removed from saved list.",
-        savedItems: userDoc.savedForLater,
-      });
-    } catch (error) {
-      res.status(400).json({ message: error.message });
-    }
-  }
-);
-
-// Check if content is saved
-app.get(
-  "/api/save-for-later/check/:contentId/:contentType",
-  verifyToken,
-  async (req, res) => {
-    try {
-      const { contentId, contentType } = req.params;
-
-      const userDoc = await User.findById(req.userId);
-
-      if (!userDoc) {
-        return res.status(400).json({ message: "User not found." });
-      }
-
-      const isSaved = userDoc.savedForLater.some(
-        (item) =>
-          item.contentId === contentId && item.contentType === contentType
-      );
-
-      res.status(200).json({ isSaved });
-    } catch (error) {
-      res.status(400).json({ message: error.message });
-    }
-  }
-);
-
+// ============================================
 app.listen(PORT, "0.0.0.0", () => {
   connectToDB();
-  console.log(`Server is running on http://0.0.0.0:${PORT}`);
-  console.log(`Server accessible at http://localhost:${PORT}`);
-  console.log(`Server accessible on network at http://[YOUR_IP]:${PORT}`);
+  console.log(`Bearer Token Server running on PORT ${PORT}`);
 });
