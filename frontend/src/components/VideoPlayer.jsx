@@ -179,11 +179,7 @@ const VideoPlayer = ({ videoUrl, contentId, contentType, onClose, title }) => {
           )}
         </div>
 
-        {/* Debug info */}
-        <div className="absolute bottom-4 left-4 bg-black bg-opacity-75 text-white p-2 rounded text-xs z-20 pointer-events-none">
-          <div>Video: {title}</div>
-          <div className="text-xs opacity-75">URL loaded</div>
-        </div>
+      
 
         {/* Rating Modal */}
         {showRating && (
