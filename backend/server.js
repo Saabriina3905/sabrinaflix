@@ -112,21 +112,18 @@ app.post("/api/signup", async (req, res) => {
       password: hashedPassword,
     });
 
-    // JWT
 
     if (userDoc) {
-      // jwt.sign(payload, secret, options)
       const token = jwt.sign({ id: userDoc._id }, process.env.JWT_SECRET, {
         expiresIn: "7d",
       });
 
-res.cookie("token", token, {
-  httpOnly: true,
-  secure: true,
-  sameSite: "none",
-  path: "/"
-});
-
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        path: "/",
+      });
     }
 
     return res
@@ -168,13 +165,12 @@ app.post("/api/login", async (req, res) => {
         expiresIn: "7d",
       });
 
-    res.cookie("token", token, {
-  httpOnly: true,
-  secure: true,
-  sameSite: "none",
-  path: "/"
-});
-
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        path: "/",
+      });
     }
 
     return res
