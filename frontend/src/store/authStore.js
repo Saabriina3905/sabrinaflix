@@ -2,17 +2,15 @@ import { create } from "zustand";
 import API from "../api/axios";
 
 export const useAuthStore = create((set) => ({
-  // initial states
   user: null,
   isLoading: false,
   error: null,
   message: null,
   fetchingUser: true,
 
-  // functions
-
+  // SIGNUP
   signup: async (username, email, password) => {
-    set({ isLoading: true, message: null });
+    set({ isLoading: true, error: null });
 
     try {
       const response = await API.post("/signup", {
@@ -22,126 +20,100 @@ export const useAuthStore = create((set) => ({
       });
 
       set({ user: response.data.user, isLoading: false });
-    } catch (error) {
-      let errorMessage;
-      
-      // Check if it's a network error (no response from server)
-      if (!error.response) {
-        if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || error.message.includes('Network')) {
-          errorMessage = "Unable to connect to the server. Please check if the backend server is running.";
-        } else if (error.code === 'ECONNREFUSED') {
-          errorMessage = "Connection refused. Please ensure the backend server is running on port 5000.";
-        } else {
-          errorMessage = "Network error. Please check your connection and try again.";
-        }
-      } else {
-        // Server responded with an error
-        errorMessage = error.response?.data?.message || 
-                      "Error signing up. Please try again.";
-      }
-      
-      set({
-        isLoading: false,
-        error: errorMessage,
-      });
+      return response.data.user;
 
-      // Attach user-friendly message to error object for use in catch blocks
-      error.userMessage = errorMessage;
-      throw error;
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.message ||
+        error.userMessage ||
+        "Signup failed.";
+
+      set({ error: errorMessage, isLoading: false });
+
+      throw new Error(errorMessage);
     }
   },
 
+  // LOGIN
   login: async (username, password) => {
-    set({ isLoading: true, message: null, error: null });
+    set({ isLoading: true, error: null });
 
     try {
-      const response = await API.post("/login", {
-        username,
-        password,
-      });
-
-      const { user, message } = response.data;
+      const res = await API.post("/login", { username, password });
 
       set({
-        user,
-        message,
+        user: res.data.user,
+        message: res.data.message,
         isLoading: false,
       });
 
-      return { user, message };
+      return res.data.user;
+
     } catch (error) {
-      let errorMessage;
-      
-      // Use user-friendly message from interceptor if available
-      if (error.userMessage) {
-        errorMessage = error.userMessage;
-      } else if (!error.response) {
-        // Network error (no response from server)
-        if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || error.message.includes('Network')) {
-          errorMessage = "Unable to connect to the server. Please check if the backend server is running.";
-        } else if (error.code === 'ECONNREFUSED') {
-          errorMessage = "Connection refused. Please ensure the backend server is running on port 5000.";
-        } else {
-          errorMessage = "Network error. Please check your connection and try again.";
-        }
-      } else {
-        // Server responded with an error
-        errorMessage = error.response?.data?.message || 
-                      "Error logging in. Please check your credentials.";
-      }
-      
-      set({
-        isLoading: false,
-        error: errorMessage,
-      });
+      const errorMessage =
+        error.response?.data?.message ||
+        error.userMessage ||
+        "Invalid username or password.";
 
-      // Attach user-friendly message to error object for use in catch blocks
-      error.userMessage = errorMessage;
-      throw error;
+      set({ error: errorMessage, isLoading: false });
+
+      throw new Error(errorMessage);
     }
   },
 
+  // FETCH USER (COOKIE VALIDATION)
   fetchUser: async () => {
     set({ fetchingUser: true, error: null });
 
     try {
-      const response = await API.get("/fetch-user");
-      set({ user: response.data.user, fetchingUser: false });
-    } catch (error) {
+      const res = await API.get("/fetch-user");
+
       set({
+        user: res.data.user,  // IMPORTANT
         fetchingUser: false,
-        error: null,
-        user: null,
       });
 
-      throw error;
+      return res.data.user;
+
+    } catch {
+      // ❗ DO NOT WIPE USER LIKE BEFORE
+      set({
+        user: null,
+        fetchingUser: false,
+      });
     }
   },
 
+  // LOGOUT
   logout: async () => {
-    set({ isLoading: true, error: null, message: null });
+    set({ isLoading: true, error: null });
 
     try {
-      const response = await API.post("/logout");
-      const { message } = response.data;
+      const res = await API.post(
+        "/logout",
+        {},
+        { withCredentials: true } // 🔥 FIX 2
+      );
+
       set({
-        message,
-        isLoading: false,
         user: null,
-        error: null,
+        message: res.data.message,
+        isLoading: false,
       });
 
-      return { message };
+      return res.data.message;
+
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 
-                          error.message || 
-                          "Error logging out. Please check your connection.";
+      const errorMessage =
+        error.response?.data?.message ||
+        "Error logging out.";
+
       set({
         isLoading: false,
         error: errorMessage,
       });
 
-      throw error;
+      throw new Error(errorMessage);
     }
   },
 }));

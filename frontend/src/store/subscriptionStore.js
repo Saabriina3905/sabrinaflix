@@ -22,6 +22,7 @@ export const useSubscriptionStore = create((set) => ({
         isLoading: false,
       });
       return response.data;
+
     } catch (error) {
       set({
         isLoading: false,
@@ -36,14 +37,21 @@ export const useSubscriptionStore = create((set) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const response = await API.post("/subscription/start-trial");
+      const response = await API.post(
+        "/subscription/start-trial",
+        {},
+        { withCredentials: true }  // 🔥 FIX 1
+      );
+
       set({
         subscriptionStatus: response.data.subscriptionStatus,
         subscriptionEndDate: response.data.subscriptionEndDate,
         isActive: true,
         isLoading: false,
       });
+
       return response.data;
+
     } catch (error) {
       set({
         isLoading: false,
@@ -57,14 +65,21 @@ export const useSubscriptionStore = create((set) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const response = await API.post("/subscription/upgrade");
+      const response = await API.post(
+        "/subscription/upgrade",
+        {},
+        { withCredentials: true }  // 🔥 FIX 2
+      );
+
       set({
         subscriptionStatus: response.data.subscriptionStatus,
         subscriptionEndDate: response.data.subscriptionEndDate,
         isActive: true,
         isLoading: false,
       });
+
       return response.data;
+
     } catch (error) {
       set({
         isLoading: false,
@@ -74,4 +89,3 @@ export const useSubscriptionStore = create((set) => ({
     }
   },
 }));
-

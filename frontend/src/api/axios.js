@@ -5,13 +5,12 @@ const API = axios.create({
     ? "https://sabrinaflix.onrender.com/api"
     : "http://172.20.10.5:5000/api",
   withCredentials: true,
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
+// ensure credentials always sent
 API.defaults.withCredentials = true;
-// Handle errors
+
+// Interceptor for errors
 API.interceptors.response.use(
   (res) => res,
   (err) => {
