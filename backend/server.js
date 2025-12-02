@@ -210,7 +210,13 @@ app.get("/api/fetch-user", async (req, res) => {
 });
 
 app.post("/api/logout", async (req, res) => {
-  res.clearCookie("token");
+  res.clearCookie("token", {
+  httpOnly: true,
+  secure: true,
+  sameSite: "none",
+  path: "/",
+});
+
   res.status(200).json({ message: "Logged out successfully" });
 });
 

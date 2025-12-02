@@ -13,7 +13,7 @@ export const useSubscriptionStore = create((set) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const response = await API.get("/subscription/status");
+      const response = await API.get("/subscription/status", { withCredentials: true });
       set({
         subscriptionStatus: response.data.subscriptionStatus,
         subscriptionEndDate: response.data.subscriptionEndDate,
