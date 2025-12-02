@@ -144,7 +144,7 @@ const VideoPlayer = ({ videoUrl, contentId, contentType, onClose, title }) => {
             console.log("❌ [VideoPlayer] Close button clicked");
             onClose();
           }}
-          className="absolute top-4 right-4 z-50 bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition"
+          className="absolute top-4 right-10 z-50 bg-black bg-opacity-50 rounded-full hover:bg-opacity-75 transition"
         >
           <X className="w-6 h-6 text-white" />
         </button>
