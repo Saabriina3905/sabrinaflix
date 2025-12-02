@@ -34,7 +34,7 @@ export const useAuthStore = create((set) => ({
     }
   },
 
-  // LOGIN
+  // LOGIN tocken
   login: async (username, password) => {
     set({ isLoading: true, error: null });
 
